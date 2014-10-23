@@ -63,7 +63,7 @@ switch($action)
 
 function permissionviewer_general()
 {
-    global $mybb, $db, $table, $groupzerogreater, $lang;
+    global $mybb, $db, $table, $groupzerogreater, $lang, $cache;
     $lang->load("user_groups");
     if($mybb->input['username'] || $mybb->input['guest'])
     {
@@ -121,7 +121,7 @@ function permissionviewer_general()
         "pmquota" => "message_quota",
         "maxpmrecipients" => "max_recipients",
         "cansendemail" => "can_email_users",
-        "cansendemailoveride" => "can_email_users_override",
+        "cansendemailoverride" => "can_email_users_override",
         "maxemails" => "max_emails_per_day",
         "emailfloodtime" => "email_flood_time",
         "canviewmemberlist" => "can_view_member_list",
@@ -173,19 +173,50 @@ function permissionviewer_general()
         "canuseipsearch" => "can_use_ipsearch",
         );
 
+        /* Now we are going to load the plugin cache.  
+        * This lets us try and find additional language files.
+        */
+
+        $active_plugins = $cache->read("plugins");
+        foreach($active_plugins['active'] as $plugin)
+        {
+            require_once MYBB_ROOT . "/inc/plugins/" . $plugin . ".php";
+            $info_function = $plugin . "_info";
+            $plugin_info = $info_function();
+            if(array_key_exists("language_file", $plugin_info))
+            {
+                $lang->load($plugin_info['language_file']);
+                if(array_key_exists("language_prefix", $plugin_info))
+                {
+                    $prefixes[] = $plugin_info['language_prefix'];
+                }
+            }
+        }
+
+
         foreach($userpermissions as $key => $value)
         {
             if(in_array($key, $skip_keys))
             {
                 continue;
             }
+            $language_string = $key;
             if(array_key_exists($key, $language_strings))
             {
                 $language_string = $lang->$language_strings[$key];
             }
             else
             {
-                $language_string = $key;
+                // No immediate key is available. Try to create one
+                foreach($prefixes as $prefix)
+                {
+                    $keyname = $prefix . $key;
+                    if(property_exists($lang, $keyname))
+                    {
+                        $language_string = $lang->$keyname;
+                        continue;
+                    }
+                }
             }
             $table->construct_cell($language_string);
             // Figure out if it should be a yes/no language string
