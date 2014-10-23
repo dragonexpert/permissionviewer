@@ -147,7 +147,7 @@ function permissionviewer_general()
         "reputationpower" => "points_to_award_take",
         "maxreputationsday" => "max_reputations_daily",
         "maxreputationsperuser" => "max_reputations_peruser",
-        "maxrreputationsperthread" => "max_reputations_perthread",
+        "maxreputationsperthread" => "max_reputations_perthread",
         "candisplaygroup" => "can_set_as_display_group",
         "attachquota" => "attach_quota",
         "cancustomtitle" => "can_use_usertitles",
