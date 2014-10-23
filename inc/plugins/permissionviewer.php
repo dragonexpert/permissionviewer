@@ -14,7 +14,7 @@ function permissionviewer_info()
         "description" => "Easily view what permissions users have",
         "website" => "http://www.mybb.com",
         "author" => "Mark Janssen",
-        "version" => "1.0",
+        "version" => "1.1",
         "compatibility" => "18*",
         "codename" => "permissionviewer"
     );
