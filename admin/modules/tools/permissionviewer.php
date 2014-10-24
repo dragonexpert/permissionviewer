@@ -63,7 +63,7 @@ switch($action)
 
 function permissionviewer_general()
 {
-    global $mybb, $db, $table, $groupzerogreater, $lang, $cache;
+    global $mybb, $db, $table, $groupzerogreater, $lang, $cache, $plugins;
     $lang->load("user_groups");
     if($mybb->input['username'] || $mybb->input['guest'])
     {
@@ -83,6 +83,8 @@ function permissionviewer_general()
         {
             $groups .= "," . $userinfo['additionalgroups'];
         }
+        // We need a hook here for $groupzerogreater if plugin authors want a 0 to be unlimited.
+        $plugins->run_hooks("tools_permissionviewer_general_zero", $groupzerogreater);
         $userpermissions = usergroup_permissions($groups);
         $table->construct_header("Permission");
         $table->construct_header("Value");
@@ -193,6 +195,9 @@ function permissionviewer_general()
             }
         }
 
+        // For those who would rather use a hook for language
+       $plugins->run_hooks("tools_permissionviewer_general_language");
+
 
         foreach($userpermissions as $key => $value)
         {
@@ -277,7 +282,7 @@ function permissionviewer_general()
 
 function permissionviewer_forum()
 {
-    global $mybb, $db, $lang, $groupzerogreater, $table;
+    global $mybb, $db, $lang, $groupzerogreater, $table, $cache, $plugins;
     if($mybb->input['username'] || $mybb->input['guest'] == 1)
     {
         $lang->load("forum_management");
