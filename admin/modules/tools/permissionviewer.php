@@ -298,59 +298,14 @@ function permissionviewer_forum()
         }
 
         // Get the usergroup info for permissions
-        if(!$mybb->input['guest'])
+        if($mybb->input['guest'])
         {
-            $usergroupinfo = usergroup_permissions($gids);
-        }
-        else
-        {
-            $usergroupinfo = usergroup_permissions(1);
-            $gids = 1;
             $mybb->input['username']= "Guest";
         }
-
         // Get the forum list
-        $forumquery = $db->simple_select("forums", "fid,name", "", array("order_by" => "name", "order_dir" => "ASC"));
-        while($forum = $db->fetch_array($forumquery))
-        {
-            $table->construct_header("Permission");
-            $table->construct_header("Value");
-            $table->construct_row();
-            $fid = $forum['fid'];
-            $permissionquery = $db->simple_select("forumpermissions", "*", "fid=$fid AND gid IN(" . $gids . ")");
-            $forumpermissions = array();
-            $zerogreater = array("canonlyreplyownthreads", "canonlyviewownthreads");
-            while($permission = $db->fetch_array($permissionquery))
-            {
-                foreach($permission as $key => $value)
-                {
-                    if(in_array($key,$zerogreater) && $forumpermissions[$key] != 1)
-                    {
-                        if($value == 1)
-                        {
-                            $forumpermissions[$key] = 0; // Use this to avoid wrong language
-                        }
-                        else
-                        {
-                            $forumpermissions[$key] = 1;
-                        }
-                    }
-                    else
-                    {
-                        if(!$forumpermissions[$key] || $forumpermissions[$key] < $value)
-                        {
-                            $forumpermissions[$key] = $value;
-                        }
-                    }
+        $forums = $cache->read("forums");
 
-                }
-            }
-            if(!$forumpermissions['fid'])
-            {
-                $forumpermissions = $usergroupinfo;
-            }
-
-            // This is used if there are no custom permissions for that forum.
+         // This is used if there are no custom permissions for that forum.
             $good_keys = array(
                 "canview" => "viewing_field_canview",
                 "canviewthreads" => "viewing_field_canviewthreads",
@@ -374,26 +329,91 @@ function permissionviewer_forum()
                 "cansearch" => "misc_field_cansearch"
                 );
 
-         //Now permissions are built, lets display them.
-            foreach($forumpermissions as $permissionname => $value)
-            {
-             if(!array_key_exists($permissionname, $good_keys))
+        // Let plugin authors add their own keys to the array.
+         $plugins->run_hooks("tools_permissionviewer_forum_good_keys", $good_keys);
+
+         // Now permissions are built, lets display them.
+         foreach($forums as $forum)
+         {
+             $forumname = $forum['name'];
+             // Guests require special tricks
+             if(!$mybb->input['guest'])
              {
-                 continue;
-             }
-             $table->construct_cell($lang->$good_keys[$permissionname]);
-             if($value == 1)
-             {
-                 $table->construct_cell($lang->yes);
+                $totalforumpermissions = forum_permissions($forum['fid'], $userinfo['uid']);
              }
              else
              {
-                 $table->construct_cell($lang->no);
+                 $totalforumpermissions = forum_permissions($forum['fid'], 0, 1);
              }
-             $table->construct_row();
-            }
-            $table->output("Permissions in " . $forum['name']);
-        }
+             // Now format the permissions so it doesn't show it a billion times.
+             $zerogreater = array("canonlyreplyownthreads", "canonlyviewownthreads");
+             $forumpermissions = array();
+             foreach($totalforumpermissions as $key => $value)
+              {
+                    if(!array_key_exists($key, $good_keys))
+                    {
+                        continue;
+                    }
+                    if(in_array($key, $zerogreater) && $forumpermissions[$key] != 1)
+                    {
+                        if($value == 1)
+                        {
+                            $forumpermissions[$key] = 0; // Use this to avoid wrong language
+                        }
+                        else
+                        {
+                            $forumpermissions[$key] = 1;
+                        }
+                    }
+                    else
+                    {
+                        if(!$forumpermissions[$key] || $forumpermissions[$key] < $value)
+                        {
+                            $forumpermissions[$key] = $value;
+                        }
+                    }
+                }
+                // Show whether or not the forum is active
+                $table->construct_cell($lang->forum_is_active . "<br />" . $lang->forum_is_active_desc);
+                if($forum['active'])
+                {
+                    $table->construct_cell($lang->yes);
+                }
+                else
+                {
+                    $table->construct_cell($lang->no);
+                }
+                $table->construct_row();
+                // Show if the forum is open for posting
+                $table->construct_cell($lang->forum_is_open . "<br />" . $lang->forum_is_open_desc);
+                if($forum['open'])
+                {
+                    $table->construct_cell($lang->yes);
+                }
+                else
+                {
+                    $table->construct_cell($lang->no);
+                }
+                $table->construct_row();
+                foreach($forumpermissions as $permissionname => $value)
+                {
+                    if(!array_key_exists($permissionname, $good_keys))
+                    {
+                        continue;
+                    }
+                    $table->construct_cell($lang->$good_keys[$permissionname]);
+                    if($value == 1)
+                    {
+                        $table->construct_cell($lang->yes);
+                    }
+                    else
+                    {
+                        $table->construct_cell($lang->no);
+                    }
+                    $table->construct_row();
+                }
+                $table->output("Permissions in " . $forumname);
+         }
         // Show the form so they can search again
         $form = new DefaultForm("index.php", "get");
         $form_container = new FormContainer("Search");
