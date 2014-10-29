@@ -1,0 +1,19 @@
+This file lists all hooks the plugin has.  You can use these to make your plugin compatible with Permission Viewer.  Line numbers 
+may not always be up to date, but will give you a general idea.
+
+File: /admin/module/tools/permissionviewer.php
+Line 88: tools_permissionviewer_general_zero &$groupzerogreater
+
+Use this hook if your plugin uses a zero to represent unlimited.
+
+Line 200: tools_permissionviewer_general_language
+
+Use this hook to add any general usergroup language necessary.
+
+Line 296: tools_permissionviewer_moderator_language
+
+Use this hook to add any language for moderators that is necessary.
+
+Line 450: tools_permissionviewer_forum_good_keys &$good_keys
+
+Use this hook to add additional fields that should be parsed in forum permissions.
