@@ -64,6 +64,7 @@ switch($action)
 function permissionviewer_general()
 {
     global $mybb, $db, $table, $groupzerogreater, $lang, $cache, $plugins;
+    /* Load our languages */
     $lang->load("user_groups");
     if($mybb->input['username'] || $mybb->input['guest'])
     {
@@ -71,7 +72,7 @@ function permissionviewer_general()
         $where = $db->escape_string($mybb->input['username']);
         if(!$mybb->input['guest'])
         {
-            $query = $db->simple_select("users", "usergroup,additionalgroups", "username='$where'");
+            $query = $db->simple_select("users", "uid,usergroup,additionalgroups", "username='$where'");
             $userinfo = $db->fetch_array($query);
         }
         else
@@ -86,7 +87,7 @@ function permissionviewer_general()
         // We need a hook here for $groupzerogreater if plugin authors want a 0 to be unlimited.
         $plugins->run_hooks("tools_permissionviewer_general_zero", $groupzerogreater);
         $userpermissions = usergroup_permissions($groups);
-        $table->construct_header("Permission");
+        $table->construct_header("Permission", array("style" => "width:80%"));
         $table->construct_header("Value");
         $table->construct_row();
         // The array of keys that should be skipped
@@ -258,6 +259,122 @@ function permissionviewer_general()
             $mybb->input['username'] = "Guest";
         }
         $table->output("General Permissions for " . $mybb->input['username']);
+
+        // Work out moderator permissions.
+        if($userpermissions['canmodcp'])
+        {
+            $forums = $cache->read("forums");
+            // Get the language
+            $lang->load("forum_management");
+
+            $moderator_language = array(
+            "caneditposts" => "can_edit_posts",
+            "cansoftdeleteposts" => "can_soft_delete_posts",
+            "canrestoreposts" => "can_restore_posts",
+            "candeleteposts" => "can_delete_posts",
+            "cansoftdeletethreads" => "can_soft_delete_threads",
+            "canrestorethreads" => "can_restore_threads",
+            "candeletethreads" => "can_delete_threads",
+            "canviewips" => "can_view_ips",
+            "canviewunapprove" => "can_view_unapprove",
+            "canviewdeleted" => "can_view_deleted",
+            "canopenclosethreads" => "can_open_close_threads",
+            "canstickunstickthreads" => "can_stick_unstick_threads",
+            "canapproveunapprovethreads" => "can_approve_unapprove_threads",
+            "canapproveunapproveposts" => "can_approve_unapprove_posts",
+            "canapproveunapproveattachs" => "can_approve_unapprove_attachments",
+            "canmanagethreads" => "can_manage_threads",
+            "canmanagepolls" => "can_manage_polls",
+            "canpostclosedthreads" => "can_post_closed_threads",
+            "canmovetononmodforum" => "can_move_to_other_forums",
+            "canusecustomtools" => "can_use_custom_tools",
+            "canmanageannouncements" => "can_manage_announcements",
+            "canmanagereportedposts" => "can_manage_reported_posts",
+            "canviewmodlog" => "can_view_mod_log"
+            );
+
+            $plugins->run_hooks("tools_permissionviewer_moderator_language");
+
+            foreach($forums as $forum)
+            {
+                $moderator_permissions = get_moderator_permissions($forum['fid'], $userinfo['uid']);
+                if(array_key_exists("caneditposts", $moderator_permissions))
+                {
+                    $table->construct_header("Permission", array("style" => "width:80%"));
+                    $table->construct_header("Value");
+                    $table->construct_row();   
+                    foreach($moderator_permissions as $permission => $value)
+                    {
+                        if(array_key_exists($permission, $moderator_language))
+                        {
+                            $table->construct_cell($lang->$moderator_language[$permission]);
+                        }
+                        else
+                        {
+                            $table->construct_cell($permission);
+                        }
+                        if($value == 1)
+                        {
+                            $table->construct_cell($lang->yes);
+                        }
+                        else
+                        {
+                            $table->construct_cell($lang->no);
+                        }
+                        $table->construct_row();
+                    }
+                    $table->output($forum['name'] . " Moderator Permissions");
+                }
+            }
+        }
+
+        // Now begin working on admin permissions.
+        if($userpermissions['cancp'])
+        {
+            $permission_data = get_admin_permissions($userinfo['uid'], $userinfo['usergroup']);
+            // Fetch all of the modules we have
+	        $modules_dir = MYBB_ADMIN_DIR."modules";
+	        $dir = opendir($modules_dir);
+	        $modules = array();
+	        while(($module = readdir($dir)) !== false)
+	        {
+		        if(is_dir($modules_dir."/".$module) && !in_array($module, array(".", "..")) && file_exists($modules_dir."/".$module."/module_meta.php"))
+		        {
+			        require_once $modules_dir."/".$module."/module_meta.php";
+			        $meta_function = $module."_admin_permissions";
+
+        			// Module has no permissions, skip it
+		    	    if(function_exists($meta_function) && is_array($meta_function()))
+			        {
+			        	$permission_modules[$module] = $meta_function();
+			        	$modules[$permission_modules[$module]['disporder']][] = $module;
+			        }
+		        }
+	        }
+	        closedir($dir);
+        	ksort($modules);
+        }
+        foreach($permission_modules as $key => $module)
+        {
+            $table->construct_header("Permission", array("style" => "width:80%"));
+            $table->construct_header("Value");
+            $table->construct_row();
+            foreach($module['permissions'] as $action => $title)
+            {
+                $table->construct_cell($title);
+                if($permission_data[$key][$action] == 1 || is_super_admin($userinfo['uid']))
+                {
+                    $table->construct_cell($lang->yes);
+                }
+                else
+                {
+                    $table->construct_cell($lang->no);
+                }
+                $table->construct_row();
+            }
+            $table->output($module['name'] . " Admin Permissions");
+        }
+        
         // Show the form to let them search again
         $form = new DefaultForm("index.php", "get");
         $form_container = new FormContainer("Search");
