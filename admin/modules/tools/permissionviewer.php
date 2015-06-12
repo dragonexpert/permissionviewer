@@ -185,15 +185,23 @@ function permissionviewer_general()
         {
             require_once MYBB_ROOT . "/inc/plugins/" . $plugin . ".php";
             $info_function = $plugin . "_info";
-            $plugin_info = $info_function();
-            if(array_key_exists("language_file", $plugin_info))
+            // Special Case for xthreads
+            if($info_function == "xthreads_info")
             {
-                $lang->load($plugin_info['language_file']);
-                if(array_key_exists("language_prefix", $plugin_info))
-                {
-                    $prefixes[] = $plugin_info['language_prefix'];
-                }
+            	require_once MYBB_ROOT . "/inc/xthreads/xt_install.php";
             }
+            if(function_exists($info_function))
+            {
+            	$plugin_info = $info_function();
+            	if(array_key_exists("language_file", $plugin_info))
+            	{
+                	$lang->load($plugin_info['language_file']);
+                	if(array_key_exists("language_prefix", $plugin_info))
+                	{
+                    		$prefixes[] = $plugin_info['language_prefix'];
+                	}
+            	}
+        	}
         }
 
         // For those who would rather use a hook for language
