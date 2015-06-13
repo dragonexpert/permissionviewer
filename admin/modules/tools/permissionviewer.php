@@ -181,6 +181,7 @@ function permissionviewer_general()
         */
 
         $active_plugins = $cache->read("plugins");
+        $prefixes = array();
         foreach($active_plugins['active'] as $plugin)
         {
             require_once MYBB_ROOT . "/inc/plugins/" . $plugin . ".php";
