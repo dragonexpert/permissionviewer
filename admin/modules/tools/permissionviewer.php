@@ -455,11 +455,12 @@ function permissionviewer_forum()
             }
             else
             {
-                $totalforumpermissions = forum_permissions($forum['fid'], 0, 1);
+                $totalforumpermissions = forum_permissions($forum['fid'], 0);
             }
             // Now format the permissions so it doesn't show it a billion times.
             $zerogreater = array("canonlyreplyownthreads", "canonlyviewownthreads");
             $forumpermissions = array();
+
             foreach($totalforumpermissions as $key => $value)
             {
                 if(!array_key_exists($key, $good_keys))
